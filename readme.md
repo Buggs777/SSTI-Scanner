@@ -25,12 +25,12 @@ This tool is intended for use in **Capture The Flag (CTF)** competitions ONLY or
 python3 scantemplate.py -u <URL> -k <KEY> -n <NUMBER_OF_KEYS> [-ok <OTHER_KEYS>]
 
 # Url must be the url of your post request, key the form key you want to inject your  
-# payloads to, and other_keys the other keys required on the request 
-
-# -ok must be under this format "key1=value1.key2=value2.key3=value3"
+# payloads to, and other_keys the other keys required on the request -ok must be under this format "key1=value1.key2=value2.key3=value3"
 
 # Example : python3 scantemplate.py -u http://myprofile/preview -k content -ok title=profile.bio=helloworld
 
 # This will test all kind of template injections on the content key of the request
   ```
   
+  ### Next Update : 
+    - Adding a blind mode to test blind injections 

